@@ -26,17 +26,23 @@ See [the wiki][4] for in-depth details.
  8. Copy the OpenMRS config file from this repo into the root directory of your unzipped copy of OpenMRS Standalone:
   - `cp openmrs/openmrs-standalone-runtime.properties /path/to/your/openmrs-standalone-1.8.3/`
   - _This configures the OpenMRS to use your local MySQL server on port 3306 rather than the MySQL server bundled with OpenMRS that is the default option and runs on port 3316. We want to use our locally installed MySQL server for persistent storage of our schema beyond the lifetime of the instance of OpenMRS._
- 9. Import our customised version of the OpenMRS MySQL database schema: [openmrs-ub.sql][8]
+ 9. Import our customised version of the OpenMRS MySQL database schema: [openmrs-ub.sql][8] **NOT IN THE REPO YET!**
   - Contains the recreated Uamuzi Bora _schema_ but has _no_ patient records (apart from a couple of test patients).
  10. Launch OpenMRS: `java -jar standalone-1.1.jar`
   - This will start the Installation Wizard. **You will need to change a few settings!**
+  - Some more steps that Kenrick has yet to write...
+  
 ## Game Plan
- 1. Create a script to move the CakePHP database schema and content from PostgreSQL to MySQL.
+
+We need to script the following:
+
+ 1. Move CakePHP database from PostgreSQL to MySQL.
   - **Not** urgent as manual solution is not too laborious at present.
- 2. Create a script to import data from CakePHP MySQL database into OpenMRS' PostgreSQL schema. This will be complicated and likely require several stages.
+ 2. Import data from CakePHP MySQL database into OpenMRS' PostgreSQL schema. This will be complicated and likely require several stages.
   1. Import limited basic patient demographics and assign identifiers.
   2. Import our `public.results` table (and data from referenced tables e.g. `public.result_values`).
-   - NB: The equivalent of `public.tests` and `result_lookups` have been recreated manually in OpenMRS, so are already present
+   - NB: The equivalent of `public.tests` and `result_lookups` have been recreated manually in OpenMRS, so are already present.
+  3. Some more steps that Kenrick has yet to write...
 
 ## Moving target
 Some issues regarding migrating:
@@ -52,3 +58,4 @@ Some issues regarding migrating:
 [5]: http://sourceforge.net/projects/openmrs/files/releases/OpenMRS_1.8.3/openmrs-standalone-1.8.3.zip/download
 [6]: https://github.com/uamuzibora/uamuzi-bora/commit/08f849450d0dc132a516692fa66e9ef53c6b78c2
 [7]: https://github.com/uamuzibora/fly-south/blob/master/sql/cakephp-mysql.sql
+[8]:
