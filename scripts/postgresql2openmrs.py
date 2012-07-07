@@ -58,11 +58,28 @@ for patient in all_patients:
         gender="M"
     elif patient['sex'] in ['Female','female','f','F']:
         gender="F"
-    new_person={'gender':gender,'birthdate':patient['date_of_birth'],'date_created':created,'creator':creator,'uuid':'hei'}
     
-    person_id=database_my.insert('person',new_person)
-
+    # Find out if they're alive or dead
+    if patient['status'] is False and patient['inactive_reason_id'] == 4:
+        # print 'Fatality!'
+        # Ok, so they're dead
+        dead = 1
+        death_date = patient['status_timestamp']
+        new_person = {'gender':gender,'birthdate':patient['date_of_birth'],'dead':dead,'death_date':death_date,'date_created':created,'creator':creator,'uuid':'hei'}
+        person_id = database_my.insert('person',new_person)
+        # We also need to mark them as having "Exited from Care" as well
+        # This needs an Observation to be created in the obs table:
+        new_obs={'person_id':person_id,'concept_id':6153,'obs_datetime':death_date,'location_id':1,'value_coded':159,'value_coded_name_id':159,'date_created':death_date,'creator':creator,'uuid':'foo'}
+        status_obs=database_my.insert('obs',new_obs)
+    else:
+        # So they're alive, but we still don't know what their program status is (some of these patients will be inactive)
+        new_person={'gender':gender,'birthdate':patient['date_of_birth'],'date_created':created,'creator':creator,'uuid':'hei'}
+        person_id = database_my.insert('person',new_person)
+        # TODO: Lookup status in patient['inactive_reason'] and update the HIV program status as appropriate
+        # see previous new_obs expression above
+        
     database_my.cursor.execute("UPDATE person SET uuid = uuid() WHERE uuid='hei'")
+    database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='foo'")
     database_my.connection.commit()
 
 
