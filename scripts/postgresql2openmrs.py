@@ -15,7 +15,7 @@ password_m="pass"
 database_m="openmrs"
 #
 creator=1
-location=3#Kakamega
+location=1#Kakamega PGH
 database_pg=db.DB(host,login,password,database)
 database_my=db.DB(host=host_m,user=login_m,password=password_m,database=database_m,driver="mysql")
 
