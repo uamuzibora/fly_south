@@ -21,6 +21,9 @@ database_my=db.DB(host=host_m,user=login_m,password=password_m,database=database
 
 attribute={'telephone_number':8,'marital_status':5} # attribute type: code
 
+# Set MySQL foreign_key_checks off, otherwise this gig won't work
+database_my.cursor.execute("SET foreign_key_checks = 0;")
+database_my.connection.commit()
 
 
 def new_person_attribute(person_id,attribute_type,value,date):
@@ -133,4 +136,7 @@ for patient in all_patients:
 #    if i==1:
 #        import sys
 #        sys.exit(0)
-    
+
+# Set MySQL foreign_key_checks on again
+database_my.cursor.execute("SET foreign_key_checks = 1;")
+database_my.connection.commit()
