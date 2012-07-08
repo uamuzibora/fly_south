@@ -41,7 +41,7 @@ question_concept_ids=[]
 
 
 
-mariage_status=[1057,1055,1055,1060,1058,1069]
+mariage_status=[1057,6244,6243,1060,1058,1059]
 
 all_patients= database_pg.query_dict("Select * from patients")
 
