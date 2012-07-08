@@ -1,6 +1,7 @@
 import db
 
 import MySQLdb
+import sys
 
 #Postgres Database
 host="localhost"
