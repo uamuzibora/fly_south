@@ -42,12 +42,13 @@ question_concept_ids=[]
 
 
 
-mariage_status=[1057,6244,6243,1060,1058,1059]
+mariage_status = [1057,6244,6243,1060,1058,1059]
 
-all_patients= database_pg.query_dict("Select * from patients")
+status_status = [5622,6154,5240,6155,159,6156,1253,5240,1285,6158,6159] 
+
+all_patients = database_pg.query_dict("Select * from patients")
 
 ## Start of big loop
-i=1
 for patient in all_patients:
 
     created=patient['created']
@@ -59,52 +60,37 @@ for patient in all_patients:
         gender="M"
     elif patient['sex'] in ['Female','female','f','F']:
         gender="F"
-    
+
     # Find out if they're alive or dead
-    if patient['status'] is False and patient['inactive_reason_id'] == 4:
-        print 'Old UPN:' + patient['upn'] + " - Fatality!"
-        # Ok, so they're dead
-        dead = 1
-        death_date = patient['status_timestamp']
-        new_person = {'gender':gender,'birthdate':patient['date_of_birth'],'dead':dead,'death_date':death_date,'date_created':created,'creator':creator,'uuid':'hei'}
-        person_id = database_my.insert('person',new_person)
-        # We also need to mark them as having "Exited from Care" as well
-        # This needs an Observation to be created in the obs table:
-        new_obs={'person_id':person_id,'concept_id':6153,'obs_datetime':death_date,'location_id':1,'value_coded':159,'value_coded_name_id':159,'date_created':death_date,'creator':creator,'uuid':'foo'}
-        status_obs=database_my.insert('obs',new_obs)
-    elif patient['status'] is False:
-        print 'Old UPN:' + patient['upn'] + " - Alive but INACTIVE"
-        # So they're alive, but we still don't know what their program status is (some of these patients will be inactive)
-        new_person={'gender':gender,'birthdate':patient['date_of_birth'],'date_created':created,'creator':creator,'uuid':'hei'}
-        person_id = database_my.insert('person',new_person)
-        # TODO: Lookup status in patient['inactive_reason'] and update the HIV program status as appropriate
-        # see previous new_obs expression above
-        # inactive_reasons:
-        #0;"None"
-        #1;"Default (1 month)"
-        #2;"Lost to Follow Up (3 months)"
-        #3;"Stop"
-        #4;"Deceased"
-        #5;"PEP End"
-        #6;"PMTCT End"
-        #7;"Lost to Follow-up"
-        #8;"Transfer Out"
-        #9;"Stopped by Physician"
-        #10;"Stopped as Duplicate Record"
-    elif patient['status'] is True:
+    if patient['status'] is True:
         print 'Old UPN:' + patient['upn']
         # Therefore, patient is alive and active: create a normal record.
         new_person={'gender':gender,'birthdate':patient['date_of_birth'],'date_created':created,'creator':creator,'uuid':'hei'}
         person_id = database_my.insert('person',new_person)
+    elif patient['status'] is False:
+        if patient['inactive_reason_id'] == 4:
+            # Ok, so they're dead
+            print 'Old UPN:' + patient['upn'] + " - Fatality!"
+            dead = 1
+            death_date = patient['status_timestamp']
+            new_person = {'gender':gender,'birthdate':patient['date_of_birth'],'dead':dead,'death_date':death_date,'date_created':created,'creator':creator,'uuid':'hei'}
+            person_id = database_my.insert('person',new_person)
+        else:
+            # So they're alive but inactive for some reason other than being deceased
+            print 'Old UPN:' + patient['upn'] + " - Alive but INACTIVE"
+            new_person={'gender':gender,'birthdate':patient['date_of_birth'],'date_created':created,'creator':creator,'uuid':'hei'}
+            person_id = database_my.insert('person',new_person)
+        # Now we need to mark these patients as having "Exited from Care" as well by creating an appropriate observation
+        status_concept_id = status_status[patient['inactive_reason_id']]
+        status = {'person_id':person_id,'concept_id':6153,'obs_datetime':patient['status_timestamp'],'location_id':1,'value_coded':status_concept_id,'value_coded_name_id':status_concept_id,'date_created':patient['status_timestamp'],'creator':creator,'uuid':'foo'}
+        status_id=database_my.insert('obs',status)
     else:
         # We really shouldn't be here: all use cases should have been covered by the options above...
         print "ERROR: Unknown patient status."
-        sys.exit(0)
-
+        sys.exit(1)
     database_my.cursor.execute("UPDATE person SET uuid = uuid() WHERE uuid='hei'")
     database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='foo'")
     database_my.connection.commit()
-
 
     #Person Name:
     forenames=patient['forenames'].split()
@@ -170,13 +156,6 @@ for patient in all_patients:
     #   6. Treatment Supporter Postal Address
     #   7. Treatment Supporter Telephone Number
 
-    # +INSERT INTO `encounter` VALUES (1,1,2,1,1,'2012-07-08 00:00:00',1,'2012-07-08 19:01:32',0,NULL,NULL,NULL,NULL,NULL,NULL,'780f9769-58a3-4541-b231-012626fa6e35');
-    
-    # +INSERT INTO `obs` VALUES (2,2,6253,1,NULL,'2012-07-08 00:00:00',1,NULL,NULL,NULL,NULL,970,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'2012-07-08 19:01:32',0,NULL,NULL,NULL,'10985627-cadb-4f1e-9ad3-260334ded809
-    # +INSERT INTO `obs` VALUES (3,2,6255,1,NULL,'2012-07-08 00:00:00',1,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'987654321',NULL,NULL,1,'2012-07-08 19:01:32',0,NULL,NULL,NULL,'237aa525-0ef2-40e7-8a11-b90b
-    # +INSERT INTO `obs` VALUES (4,2,6254,1,NULL,'2012-07-08 00:00:00',1,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'A Treatment Supporter Address',NULL,NULL,1,'2012-07-08 19:01:32',0,NULL,NULL,NULL,'4a9444fa
-    # +INSERT INTO `obs` VALUES (5,2,6252,1,NULL,'2012-07-08 00:00:00',1,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'A Treatment Supporters Name',NULL,NULL,1,'2012-07-08 19:01:32',0,NULL,NULL,NULL,'010efeaa-5
-    
     # Make our initial encounter record
     initial_encounter={'encounter_type':1,'patient_id':person_id,'location_id':1,'form_id':1,'encounter_datetime':patient['created'],'creator':creator,'date_created':patient['created'],'uuid':'hei'}
     initial_encounter_id=database_my.insert('encounter',initial_encounter)
@@ -184,35 +163,67 @@ for patient in all_patients:
 
     # Treatment Supporter
     if patient['treatment_supporter_name']:
-        ts_name = {'person_id':person_id,'concept_id':6252,'encounter_id':initial_encounter_id,'obs_datetime':patient['created'],'location_id':1,'value_text':patient['treatment_supporter_name'],'date_created':patient['created'],'creator':creator,'uuid':'hei'}
-        intial_encounter_id=database_my.insert('obs',ts_name)
-        database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei'")
+        ts_name = {'person_id':person_id,'concept_id':6252,'encounter_id':initial_encounter_id,'obs_datetime':patient['created'],'location_id':1,'value_text':patient['treatment_supporter_name'],'date_created':patient['created'],'creator':creator,'uuid':'hei1'}
+        ts_name_id=database_my.insert('obs',ts_name)
+        database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei1'")
     if patient['treatment_supporter_address']:
-        ts_address = {'person_id':person_id,'concept_id':6254,'encounter_id':initial_encounter_id,'obs_datetime':patient['created'],'location_id':1,'value_text':patient['treatment_supporter_address'],'date_created':patient['created'],'creator':creator,'uuid':'hei'}
-        intial_encounter_id=database_my.insert('obs',ts_address)
-        database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei'")
+        ts_address = {'person_id':person_id,'concept_id':6254,'encounter_id':initial_encounter_id,'obs_datetime':patient['created'],'location_id':1,'value_text':patient['treatment_supporter_address'],'date_created':patient['created'],'creator':creator,'uuid':'hei2'}
+        ts_address_id=database_my.insert('obs',ts_address)
+        database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei2'")
     if patient['treatment_supporter_telephone_number']:
-        ts_telephone = {'person_id':person_id,'concept_id':6255,'encounter_id':initial_encounter_id,'obs_datetime':patient['created'],'location_id':1,'value_text':patient['treatment_supporter_telephone_number'],'date_created':patient['created'],'creator':creator,'uuid':'hei'}
-        intial_encounter_id=database_my.insert('obs',ts_telephone)
-        database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei'")
+        ts_telephone = {'person_id':person_id,'concept_id':6255,'encounter_id':initial_encounter_id,'obs_datetime':patient['created'],'location_id':1,'value_text':patient['treatment_supporter_telephone_number'],'date_created':patient['created'],'creator':creator,'uuid':'hei3'}
+        ts_telephone_id=database_my.insert('obs',ts_telephone)
+        database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei3'")
 
-    #medinfo=database_pg.query_dict('select * from medical_informations where pid= %s', patient['pid'])
-    #if medinfo:
+    # Pull medinfo
+    medinfos = database_pg.query_dict('select * from medical_informations where pid= %s', patient['pid'])
+    medinfo = medinfos[0]
+    if medinfo:
         # So we've found the medinfo for this pt
 
-        # Construct our obs records
+        # Entry Point (patient_source_id) (6245)
+        if medinfo['patient_source_id']:
+            entry_point_concepts = ['foo',6246,6248,6247,5622,6249,5622,6250,5622,5622]
+            entry_point_concept_id = entry_point_concepts[medinfo['patient_source_id']]
+            entry_point = {'person_id':person_id,'concept_id':6245,'encounter_id':initial_encounter_id,'obs_datetime':medinfo['created'],'location_id':1,'value_coded':entry_point_concept_id,'date_created':medinfo['created'],'creator':creator,'uuid':'hei'}
+            entry_point_id=database_my.insert('obs',entry_point)
+            database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei'")
         
-    #patient_identifier_id=database_my.insert('encounter',initial_encounter)
-    #database_my.cursor.execute("UPDATE encounter SET uuid = uuid() WHERE uuid='hei'")
-    #database_my.connection.commit()
+        # ** ADD PATIENT TO PROGRAM **
+        # Date Registered/Transferred In (hiv_positive_clinic_start_date)
+        if medinfo['hiv_positive_clinic_start_date']:
+            reg_date = medinfo['hiv_positive_clinic_start_date']
+        else:
+             # If NULL, substitute in patient['created'] date
+            reg_date = patient['created']
 
-    # Add patient to program
-    # ACTIVE:
-    # +INSERT INTO `patient_program` VALUES (1,2,1,'2012-07-01 00:00:00',NULL,1,NULL,1,'2012-07-08 09:01:19',NULL,NULL,0,NULL,NULL,NULL,'d1a1bf39-9f1a-49e0-8feb-61ae79e5d58e');
-    # INACTIVE:
-    # +INSERT INTO `patient_program` VALUES (1,2,1,'2012-07-01 00:00:00','2012-07-10 00:00:00',1,NULL,1,'2012-07-08 09:01:19',1,'2012-07-08 09:03:04',0,NULL,NULL,NULL,'d1a1bf39-9f1a-49e0-8feb-61ae79e5d58e');
-    # +INSERT INTO `obs` VALUES (1,2,6153,NULL,NULL,'2012-07-08 00:00:00',1,NULL,NULL,NULL,NULL,1285,1285,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'2012-07-08 09:03:21',0,NULL,NULL,NULL,'8132e669-33e9-4dcd-8e02-61c2a9f7
- 
+        # Let's enroll them in the HIV program
+        if patient['status'] is True:
+            # Alive and active
+            hiv_program = {'patient_id':person_id,'program_id':1,'date_enrolled':reg_date,'location_id':1,'creator':creator,'date_created':medinfo['created'],'uuid':'hei'}
+            hiv_program_id = database_my.insert('patient_program',hiv_program)
+            database_my.cursor.execute("UPDATE patient_program SET uuid = uuid() WHERE uuid='hei'")
+        elif patient['status'] is False:
+            # Inactive (alive or deceased)
+            hiv_program = {'patient_id':person_id,'program_id':1,'date_enrolled':reg_date,'date_completed':patient['status_timestamp'],'location_id':1,'creator':creator,'date_created':medinfo['created'],'uuid':'hei'}
+            hiv_program_id = database_my.insert('patient_program',hiv_program)
+            database_my.cursor.execute("UPDATE patient_program SET uuid = uuid() WHERE uuid='hei'")
+        
+        # Date HIV positive (hiv_positive_date) (6259)
+        if medinfo['hiv_positive_date']:
+            hiv_date = {'person_id':person_id,'concept_id':6259,'encounter_id':initial_encounter_id,'obs_datetime':medinfo['created'],'location_id':1,'value_datetime':medinfo['hiv_positive_date'],'date_created':medinfo['created'],'creator':creator,'uuid':'hei'}
+            hiv_date_id=database_my.insert('obs',hiv_date)
+            database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei'")
+        
+        # Date eligible for ART (art_eligibility_date) (6260)
+        if medinfo['art_eligibility_date']:
+            art_elig_date = {'person_id':person_id,'concept_id':6260,'encounter_id':initial_encounter_id,'obs_datetime':medinfo['created'],'location_id':1,'value_datetime':medinfo['art_eligibility_date'],'date_created':medinfo['created'],'creator':creator,'uuid':'hei'}
+            art_elig_date_id=database_my.insert('obs',art_elig_date)
+            database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei'")
+
+    # BOOM! Initial encounter done. Cue small victory dance.
+
+
 # Set MySQL foreign_key_checks on again
 database_my.cursor.execute("SET foreign_key_checks = 1;")
 database_my.connection.commit()
