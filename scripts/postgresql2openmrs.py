@@ -133,9 +133,9 @@ for patient in all_patients:
         upn=upn1[0:5]+"-"+upn2
     else:
         upn=str(patient['upn'])
-        upn=upn[0:5]+'-'+upn[8:] # [0:5] as we have a new format for UPN
+        upn=upn[0:6]+'-'+upn[8:] # [0:5] as we have a new format for UPN
     new_patient_identifier={'patient_id':person_id,'identifier':upn,'identifier_type':3,'preferred':3,'creator':creator,'date_created':created,'location_id':location,'uuid':'hei'}
-
+    print "New UPN: " + upn
     patient_identifier_id=database_my.insert('patient_identifier',new_patient_identifier)
     database_my.cursor.execute("UPDATE patient_identifier SET uuid = uuid() WHERE uuid='hei'")
     database_my.connection.commit()
