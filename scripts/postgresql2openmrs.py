@@ -147,7 +147,7 @@ for patient in all_patients:
 #    new_person_attribute(person_id,'date_arv_eligible',medical_information['art_eligibility_date'],created)
 
 
-    #ADRESS
+    # Address
     location_id=patient['location_id']
     locations=database_pg.query_dict('Select * from locations where id= %s',location_id)
 
@@ -155,7 +155,8 @@ for patient in all_patients:
         locations.append(database_pg.query_dict('Select * from locations where id= %s',locations[-1]['parent_id'])[0])
     if len(locations)<4:
         locations=[{'name':None},{'name':None},{'name':None},{'name':None}]
-    new_person_address={'person_id':person_id,'address1':patient['home'],'creator':creator,'address2':patient['nearest_major_landmark'],'address3':patient['nearest_health_centre'],'address5':locations[-4]['name'],'address6':locations[-3]['name'],'county_district':locations[-2]['name'],'date_created':created,'uuid':'hei'}
+    #print locations
+    new_person_address={'person_id':person_id,'preferred':1,'address1':patient['home'],'address2':patient['nearest_major_landmark'],'creator':creator,'date_created':created,'county_district':locations[-2]['name'],'address3':patient['nearest_health_centre'],'address5':locations[-4]['name'],'address6':locations[-3]['name'],'uuid':'hei'}
     database_my.insert('person_address',new_person_address)
     database_my.cursor.execute("UPDATE person_address SET uuid = uuid() WHERE uuid='hei'")
     database_my.connection.commit()
