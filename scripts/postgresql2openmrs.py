@@ -164,6 +164,13 @@ for patient in all_patients:
     #Treatment Supporter:
     #Option 1: create new person
 
+    # Add patient to program
+    # ACTIVE:
+    # +INSERT INTO `patient_program` VALUES (1,2,1,'2012-07-01 00:00:00',NULL,1,NULL,1,'2012-07-08 09:01:19',NULL,NULL,0,NULL,NULL,NULL,'d1a1bf39-9f1a-49e0-8feb-61ae79e5d58e');
+    # INACTIVE:
+    # +INSERT INTO `patient_program` VALUES (1,2,1,'2012-07-01 00:00:00','2012-07-10 00:00:00',1,NULL,1,'2012-07-08 09:01:19',1,'2012-07-08 09:03:04',0,NULL,NULL,NULL,'d1a1bf39-9f1a-49e0-8feb-61ae79e5d58e');
+    # +INSERT INTO `obs` VALUES (1,2,6153,NULL,NULL,'2012-07-08 00:00:00',1,NULL,NULL,NULL,NULL,1285,1285,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'2012-07-08 09:03:21',0,NULL,NULL,NULL,'8132e669-33e9-4dcd-8e02-61c2a9f7
+ 
 # Set MySQL foreign_key_checks on again
 database_my.cursor.execute("SET foreign_key_checks = 1;")
 database_my.connection.commit()
