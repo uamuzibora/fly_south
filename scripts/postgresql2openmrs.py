@@ -164,19 +164,6 @@ for patient in all_patients:
     #Treatment Supporter:
     #Option 1: create new person
 
-    #Option 2: Attributes
-#    new_person_attribute(person_id,'treatment_supporter_name',patient['treatment_supporter_name'],created)
-#    new_person_attribute(person_id,'treatment_supporter_relationship',patient['treatment_supporter_relationship'],created)
-#    new_person_attribute(person_id,'treatment_supporter_address',patient['treatment_supporter_address'],created)
-#    new_person_attribute(person_id,'treatment_supporter_telephone_number',patient['treatment_supporter_telephone_number'],created)
-
-
-
-
-#    if i==1:
-#        import sys
-#        sys.exit(0)
-
 # Set MySQL foreign_key_checks on again
 database_my.cursor.execute("SET foreign_key_checks = 1;")
 database_my.connection.commit()
