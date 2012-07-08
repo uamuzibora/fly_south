@@ -45,7 +45,7 @@ mariage_status=[1057,6244,6243,1060,1058,1059]
 
 all_patients= database_pg.query_dict("Select * from patients")
 
-
+## Start of big loop
 i=1
 for patient in all_patients:
 
@@ -61,7 +61,7 @@ for patient in all_patients:
     
     # Find out if they're alive or dead
     if patient['status'] is False and patient['inactive_reason_id'] == 4:
-        # print 'Fatality!'
+        print 'Old UPN:' + patient['upn'] + " - Fatality!"
         # Ok, so they're dead
         dead = 1
         death_date = patient['status_timestamp']
@@ -71,13 +71,35 @@ for patient in all_patients:
         # This needs an Observation to be created in the obs table:
         new_obs={'person_id':person_id,'concept_id':6153,'obs_datetime':death_date,'location_id':1,'value_coded':159,'value_coded_name_id':159,'date_created':death_date,'creator':creator,'uuid':'foo'}
         status_obs=database_my.insert('obs',new_obs)
-    else:
+    elif patient['status'] is False:
+        print 'Old UPN:' + patient['upn'] + " - Alive but INACTIVE"
         # So they're alive, but we still don't know what their program status is (some of these patients will be inactive)
         new_person={'gender':gender,'birthdate':patient['date_of_birth'],'date_created':created,'creator':creator,'uuid':'hei'}
         person_id = database_my.insert('person',new_person)
         # TODO: Lookup status in patient['inactive_reason'] and update the HIV program status as appropriate
         # see previous new_obs expression above
-        
+        # inactive_reasons:
+        #0;"None"
+        #1;"Default (1 month)"
+        #2;"Lost to Follow Up (3 months)"
+        #3;"Stop"
+        #4;"Deceased"
+        #5;"PEP End"
+        #6;"PMTCT End"
+        #7;"Lost to Follow-up"
+        #8;"Transfer Out"
+        #9;"Stopped by Physician"
+        #10;"Stopped as Duplicate Record"
+    elif patient['status'] is True:
+        print 'Old UPN:' + patient['upn']
+        # Therefore, patient is alive and active: create a normal record.
+        new_person={'gender':gender,'birthdate':patient['date_of_birth'],'date_created':created,'creator':creator,'uuid':'hei'}
+        person_id = database_my.insert('person',new_person)
+    else:
+        # We really shouldn't be here: all use cases should have been covered by the options above...
+        print "ERROR: Unknown patient status."
+        sys.exit(0)
+
     database_my.cursor.execute("UPDATE person SET uuid = uuid() WHERE uuid='hei'")
     database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='foo'")
     database_my.connection.commit()
