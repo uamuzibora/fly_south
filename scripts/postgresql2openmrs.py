@@ -123,11 +123,11 @@ for patient in all_patients:
     database_my.cursor.execute("UPDATE person_name SET uuid = uuid() WHERE uuid='hei'")
     database_my.connection.commit()
 
-    #Patient
+    # Patient
     new_patient={'patient_id':person_id,'creator':creator,'date_created':created}
     patient_id=database_my.insert('patient',new_patient)
 
-    #UPN
+    # UPN
     if patient['upn'].find('-')!=-1:
         upn=str(patient['upn'])
         upn1,upn2=upn.split(upn)
@@ -136,16 +136,14 @@ for patient in all_patients:
         upn=str(patient['upn'])
         upn=upn[0:6]+'-'+upn[8:] # [0:5] as we have a new format for UPN
     new_patient_identifier={'patient_id':person_id,'identifier':upn,'identifier_type':3,'preferred':3,'creator':creator,'date_created':created,'location_id':location,'uuid':'hei'}
-    print "New UPN: " + upn
+
     patient_identifier_id=database_my.insert('patient_identifier',new_patient_identifier)
     database_my.cursor.execute("UPDATE patient_identifier SET uuid = uuid() WHERE uuid='hei'")
     database_my.connection.commit()
     
-    #Person attributes
-    
+    # Person attributes
     new_person_attribute(person_id,'telephone_number',patient['telephone_number'],created)
     new_person_attribute(person_id,'marital_status',patient['marital_status_id'],created)
-#    new_person_attribute(person_id,'date_arv_eligible',medical_information['art_eligibility_date'],created)
 
 
     # Address
@@ -162,8 +160,51 @@ for patient in all_patients:
     database_my.cursor.execute("UPDATE person_address SET uuid = uuid() WHERE uuid='hei'")
     database_my.connection.commit()
     
-    #Treatment Supporter:
-    #Option 1: create new person
+    # Initial Encounter
+    # Things we need:
+    #   1. Entry Point
+    #   2. Date Registered/Transferred In
+    #   3. Date HIV positive
+    #   4. Date eligible for ART
+    #   5. Treatment Supporter Name
+    #   6. Treatment Supporter Postal Address
+    #   7. Treatment Supporter Telephone Number
+
+    # +INSERT INTO `encounter` VALUES (1,1,2,1,1,'2012-07-08 00:00:00',1,'2012-07-08 19:01:32',0,NULL,NULL,NULL,NULL,NULL,NULL,'780f9769-58a3-4541-b231-012626fa6e35');
+    
+    # +INSERT INTO `obs` VALUES (2,2,6253,1,NULL,'2012-07-08 00:00:00',1,NULL,NULL,NULL,NULL,970,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'2012-07-08 19:01:32',0,NULL,NULL,NULL,'10985627-cadb-4f1e-9ad3-260334ded809
+    # +INSERT INTO `obs` VALUES (3,2,6255,1,NULL,'2012-07-08 00:00:00',1,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'987654321',NULL,NULL,1,'2012-07-08 19:01:32',0,NULL,NULL,NULL,'237aa525-0ef2-40e7-8a11-b90b
+    # +INSERT INTO `obs` VALUES (4,2,6254,1,NULL,'2012-07-08 00:00:00',1,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'A Treatment Supporter Address',NULL,NULL,1,'2012-07-08 19:01:32',0,NULL,NULL,NULL,'4a9444fa
+    # +INSERT INTO `obs` VALUES (5,2,6252,1,NULL,'2012-07-08 00:00:00',1,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'A Treatment Supporters Name',NULL,NULL,1,'2012-07-08 19:01:32',0,NULL,NULL,NULL,'010efeaa-5
+    
+    # Make our initial encounter record
+    initial_encounter={'encounter_type':1,'patient_id':person_id,'location_id':1,'form_id':1,'encounter_datetime':patient['created'],'creator':creator,'date_created':patient['created'],'uuid':'hei'}
+    initial_encounter_id=database_my.insert('encounter',initial_encounter)
+    database_my.cursor.execute("UPDATE encounter SET uuid = uuid() WHERE uuid='hei'")
+
+    # Treatment Supporter
+    if patient['treatment_supporter_name']:
+        ts_name = {'person_id':person_id,'concept_id':6252,'encounter_id':initial_encounter_id,'obs_datetime':patient['created'],'location_id':1,'value_text':patient['treatment_supporter_name'],'date_created':patient['created'],'creator':creator,'uuid':'hei'}
+        intial_encounter_id=database_my.insert('obs',ts_name)
+        database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei'")
+    if patient['treatment_supporter_address']:
+        ts_address = {'person_id':person_id,'concept_id':6254,'encounter_id':initial_encounter_id,'obs_datetime':patient['created'],'location_id':1,'value_text':patient['treatment_supporter_address'],'date_created':patient['created'],'creator':creator,'uuid':'hei'}
+        intial_encounter_id=database_my.insert('obs',ts_address)
+        database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei'")
+    if patient['treatment_supporter_telephone_number']:
+        ts_telephone = {'person_id':person_id,'concept_id':6255,'encounter_id':initial_encounter_id,'obs_datetime':patient['created'],'location_id':1,'value_text':patient['treatment_supporter_telephone_number'],'date_created':patient['created'],'creator':creator,'uuid':'hei'}
+        intial_encounter_id=database_my.insert('obs',ts_telephone)
+        database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei'")
+
+    #medinfo=database_pg.query_dict('select * from medical_informations where pid= %s', patient['pid'])
+    #if medinfo:
+        # So we've found the medinfo for this pt
+
+        # Construct our obs records
+        
+    #patient_identifier_id=database_my.insert('encounter',initial_encounter)
+    #database_my.cursor.execute("UPDATE encounter SET uuid = uuid() WHERE uuid='hei'")
+    #database_my.connection.commit()
 
     # Add patient to program
     # ACTIVE:
