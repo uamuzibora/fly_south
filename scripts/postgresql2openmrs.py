@@ -179,70 +179,69 @@ for patient in all_patients:
     #   6. Treatment Supporter Postal Address
     #   7. Treatment Supporter Telephone Number
 
-    # Make our initial encounter record
-    initial_encounter={'encounter_type':1,'patient_id':person_id,'location_id':1,'form_id':1,'encounter_datetime':patient['created'],'creator':creator,'date_created':patient['created'],'uuid':'hei'}
-    initial_encounter_id=database_my.insert('encounter',initial_encounter)
-    database_my.cursor.execute("UPDATE encounter SET uuid = uuid() WHERE uuid='hei'")
-
-    # Treatment Supporter
-    if patient['treatment_supporter_name']:
-        ts_name = {'person_id':person_id,'concept_id':6252,'encounter_id':initial_encounter_id,'obs_datetime':patient['created'],'location_id':1,'value_text':patient['treatment_supporter_name'],'date_created':patient['created'],'creator':creator,'uuid':'hei1'}
-        ts_name_id=database_my.insert('obs',ts_name)
-        database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei1'")
-    if patient['treatment_supporter_address']:
-        ts_address = {'person_id':person_id,'concept_id':6254,'encounter_id':initial_encounter_id,'obs_datetime':patient['created'],'location_id':1,'value_text':patient['treatment_supporter_address'],'date_created':patient['created'],'creator':creator,'uuid':'hei2'}
-        ts_address_id=database_my.insert('obs',ts_address)
-        database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei2'")
-    if patient['treatment_supporter_telephone_number']:
-        ts_telephone = {'person_id':person_id,'concept_id':6255,'encounter_id':initial_encounter_id,'obs_datetime':patient['created'],'location_id':1,'value_text':patient['treatment_supporter_telephone_number'],'date_created':patient['created'],'creator':creator,'uuid':'hei3'}
-        ts_telephone_id=database_my.insert('obs',ts_telephone)
-        database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei3'")
-
     # Pull medinfo
     medinfos = database_pg.query_dict('select * from medical_informations where pid= %s', patient['pid'])
     medinfo = medinfos[0]
-    if medinfo:
-        # So we've found the medinfo for this pt
+    
+    # So we've found the medinfo for this pt
+    # Date Registered/Transferred In (hiv_positive_clinic_start_date)
+    if medinfo['hiv_positive_clinic_start_date']:
+        reg_date = medinfo['hiv_positive_clinic_start_date']
+    else:
+         # If NULL, substitute in patient['created'] date
+        reg_date = patient['created']
 
-        # Entry Point (patient_source_id) (6245)
-        if medinfo['patient_source_id']:
-            entry_point_concepts = ['foo',6246,6248,6247,5622,6249,5622,6250,5622,5622]
-            entry_point_concept_id = entry_point_concepts[medinfo['patient_source_id']]
-            entry_point = {'person_id':person_id,'concept_id':6245,'encounter_id':initial_encounter_id,'obs_datetime':medinfo['created'],'location_id':1,'value_coded':entry_point_concept_id,'date_created':medinfo['created'],'creator':creator,'uuid':'hei'}
-            entry_point_id=database_my.insert('obs',entry_point)
-            database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei'")
-        
-        # ** ADD PATIENT TO PROGRAM **
-        # Date Registered/Transferred In (hiv_positive_clinic_start_date)
-        if medinfo['hiv_positive_clinic_start_date']:
-            reg_date = medinfo['hiv_positive_clinic_start_date']
-        else:
-             # If NULL, substitute in patient['created'] date
-            reg_date = patient['created']
+    # Make our initial encounter record
+    initial_encounter={'encounter_type':1,'patient_id':person_id,'location_id':1,'form_id':1,'encounter_datetime':reg_date,'creator':creator,'date_created':reg_date,'uuid':'hei'}
+    initial_encounter_id=database_my.insert('encounter',initial_encounter)
+    database_my.cursor.execute("UPDATE encounter SET uuid = uuid() WHERE uuid='hei'")
 
-        # Let's enroll them in the HIV program
-        if patient['status'] is True:
-            # Alive and active
-            hiv_program = {'patient_id':person_id,'program_id':1,'date_enrolled':reg_date,'location_id':1,'creator':creator,'date_created':medinfo['created'],'uuid':'hei'}
-            hiv_program_id = database_my.insert('patient_program',hiv_program)
-            database_my.cursor.execute("UPDATE patient_program SET uuid = uuid() WHERE uuid='hei'")
-        elif patient['status'] is False:
-            # Inactive (alive or deceased)
-            hiv_program = {'patient_id':person_id,'program_id':1,'date_enrolled':reg_date,'date_completed':patient['status_timestamp'],'location_id':1,'creator':creator,'date_created':medinfo['created'],'uuid':'hei'}
-            hiv_program_id = database_my.insert('patient_program',hiv_program)
-            database_my.cursor.execute("UPDATE patient_program SET uuid = uuid() WHERE uuid='hei'")
-        
-        # Date HIV positive (hiv_positive_date) (6259)
-        if medinfo['hiv_positive_date']:
-            hiv_date = {'person_id':person_id,'concept_id':6259,'encounter_id':initial_encounter_id,'obs_datetime':medinfo['created'],'location_id':1,'value_datetime':medinfo['hiv_positive_date'],'date_created':medinfo['created'],'creator':creator,'uuid':'hei'}
-            hiv_date_id=database_my.insert('obs',hiv_date)
-            database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei'")
-        
-        # Date eligible for ART (art_eligibility_date) (6260)
-        if medinfo['art_eligibility_date']:
-            art_elig_date = {'person_id':person_id,'concept_id':6260,'encounter_id':initial_encounter_id,'obs_datetime':medinfo['created'],'location_id':1,'value_datetime':medinfo['art_eligibility_date'],'date_created':medinfo['created'],'creator':creator,'uuid':'hei'}
-            art_elig_date_id=database_my.insert('obs',art_elig_date)
-            database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei'")
+    # Entry Point (patient_source_id) (6245)
+    if medinfo['patient_source_id']:
+        entry_point_concepts = ['foo',6246,6248,6247,5622,6249,5622,6250,5622,5622]
+        entry_point_concept_id = entry_point_concepts[medinfo['patient_source_id']]
+        entry_point = {'person_id':person_id,'concept_id':6245,'encounter_id':initial_encounter_id,'obs_datetime':reg_date,'location_id':1,'value_coded':entry_point_concept_id,'date_created':reg_date,'creator':creator,'uuid':'hei'}
+        entry_point_id=database_my.insert('obs',entry_point)
+        database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei'")
+    
+    # ** ADD PATIENT TO PROGRAM **
+    # Let's enroll them in the HIV program
+    if patient['status'] is True:
+        # Alive and active
+        hiv_program = {'patient_id':person_id,'program_id':1,'date_enrolled':reg_date,'location_id':1,'creator':creator,'date_created':reg_date,'uuid':'hei'}
+        hiv_program_id = database_my.insert('patient_program',hiv_program)
+        database_my.cursor.execute("UPDATE patient_program SET uuid = uuid() WHERE uuid='hei'")
+    elif patient['status'] is False:
+        # Inactive (alive or deceased)
+        hiv_program = {'patient_id':person_id,'program_id':1,'date_enrolled':reg_date,'date_completed':patient['status_timestamp'],'location_id':1,'creator':creator,'date_created':reg_date,'uuid':'hei'}
+        hiv_program_id = database_my.insert('patient_program',hiv_program)
+        database_my.cursor.execute("UPDATE patient_program SET uuid = uuid() WHERE uuid='hei'")
+    
+    # Date HIV positive (hiv_positive_date) (6259)
+    if medinfo['hiv_positive_date']:
+        hiv_date = {'person_id':person_id,'concept_id':6259,'encounter_id':initial_encounter_id,'obs_datetime':reg_date,'location_id':1,'value_datetime':medinfo['hiv_positive_date'],'date_created':reg_date,'creator':creator,'uuid':'hei'}
+        hiv_date_id=database_my.insert('obs',hiv_date)
+        database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei'")
+    
+    # Date eligible for ART (art_eligibility_date) (6260)
+    if medinfo['art_eligibility_date']:
+        art_elig_date = {'person_id':person_id,'concept_id':6260,'encounter_id':initial_encounter_id,'obs_datetime':reg_date,'location_id':1,'value_datetime':medinfo['art_eligibility_date'],'date_created':reg_date,'creator':creator,'uuid':'hei'}
+        art_elig_date_id=database_my.insert('obs',art_elig_date)
+        database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei'")
+
+    # Treatment Supporter
+    if patient['treatment_supporter_name']:
+        ts_name = {'person_id':person_id,'concept_id':6252,'encounter_id':initial_encounter_id,'obs_datetime':reg_date,'location_id':1,'value_text':patient['treatment_supporter_name'],'date_created':reg_date,'creator':creator,'uuid':'hei1'}
+        ts_name_id=database_my.insert('obs',ts_name)
+        database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei1'")
+    if patient['treatment_supporter_address']:
+        ts_address = {'person_id':person_id,'concept_id':6254,'encounter_id':initial_encounter_id,'obs_datetime':reg_date,'location_id':1,'value_text':patient['treatment_supporter_address'],'date_created':reg_date,'creator':creator,'uuid':'hei2'}
+        ts_address_id=database_my.insert('obs',ts_address)
+        database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei2'")
+    if patient['treatment_supporter_telephone_number']:
+        ts_telephone = {'person_id':person_id,'concept_id':6255,'encounter_id':initial_encounter_id,'obs_datetime':reg_date,'location_id':1,'value_text':patient['treatment_supporter_telephone_number'],'date_created':reg_date,'creator':creator,'uuid':'hei3'}
+        ts_telephone_id=database_my.insert('obs',ts_telephone)
+        database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei3'")
 
     # BOOM! Initial encounter done. Cue small victory dance.
 
@@ -315,7 +314,28 @@ for patient in all_patients:
                     if result['value_lookup'] in test_types[result['test_id']]['codes']:
                         code = test_types[result['test_id']]['codes'][result['value_lookup']]
                         obs_scribe(person_id,test_types[result['test_id']]['concept'],new_enc_id,'coded',code,enc)
+    
     # Finale time: Episode III, The Return of the Drugs
+    drug_dict ={45:[{'drug_concept':792,'drug_id':2}], # 1A
+                46:[{'drug_concept':6251,'drug_id':19},{'drug_concept':633,'drug_id':21}], # 2A
+                47:[{'drug_concept':633,'drug_id':21},{'drug_concept':630,'drug_id':22}], # 3A
+                48:[{'drug_concept':630,'drug_id':22},{'drug_concept':631,'drug_id':23}], # 3B
+                50:[{'drug_concept':796,'drug_id':25},{'drug_concept':794,'drug_id':27},{'drug_concept':814,'drug_id':29}], # R67
+                51:[{'drug_concept':797,'drug_id':24},{'drug_concept':628,'drug_id':30}], # PEP1
+                119:[{'drug_concept':796,'drug_id':26},{'drug_concept':794,'drug_id':27},{'drug_concept':814,'drug_id':29}] # R68
+                }
+
+    # Insert most recent ART Regime from results
+    regimes = database_pg.query_dict('select results.id as id, results.test_id as test_id, results.test_performed as obs_date,  result_values.value_lookup as value_lookup from results inner join result_values on results.id = result_values.result_id where results.pid= %s and results.test_id= %s order by results.test_performed desc limit 1', (patient['pid'], '20'))
+    if regimes:
+        regime = regimes[0]
+        if regime['value_lookup'] in drug_dict:
+            for drug in drug_dict[regime['value_lookup']]:
+                new_order = {'order_type_id':2,'concept_id':drug['drug_concept'],'start_date':regime['obs_date'],'creator':creator,'date_created':regime['obs_date'],'patient_id':person_id,'uuid':'hei'}
+                new_order_id=database_my.insert('orders',new_order)
+                database_my.cursor.execute("UPDATE orders SET uuid = uuid() WHERE uuid='hei'")
+                new_drug_order = {'order_id':new_order_id,'drug_inventory_id':drug['drug_id']}
+                new_drug_order_id=database_my.insert('drug_order',new_drug_order)
 
 # Set MySQL foreign_key_checks on again
 database_my.cursor.execute("SET foreign_key_checks = 1;")
