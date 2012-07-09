@@ -30,14 +30,14 @@ database_my.connection.commit()
 
 
 def new_person_attribute(person_id,attribute_type,value,date):
-    if value:
-        if attribute_type=="marital_status":
-            value=mariage_status[value]
-        attype=attribute[attribute_type]
-        new_person_attribute={'person_id':person_id,'value':value,'creator':creator,'date_created':date,'person_attribute_type_id':attype,'uuid':'hei'}
-        database_my.insert('person_attribute',new_person_attribute)
-        database_my.cursor.execute("UPDATE person_attribute SET uuid = uuid() WHERE uuid='hei'")
-        database_my.connection.commit()
+    #if value:
+    if attribute_type=="marital_status":
+        value=mariage_status[value]
+    attype=attribute[attribute_type]
+    new_person_attribute={'person_id':person_id,'value':value,'creator':creator,'date_created':date,'person_attribute_type_id':attype,'uuid':'hei'}
+    database_my.insert('person_attribute',new_person_attribute)
+    database_my.cursor.execute("UPDATE person_attribute SET uuid = uuid() WHERE uuid='hei'")
+    database_my.connection.commit()
 
 def new_encounter(person_id,enc_type_id,form_id,date):
     new_enc = {'encounter_type':enc_type_id,'patient_id':person_id,'location_id':location,'form_id':form_id,'encounter_datetime':date,'creator':creator,'date_created':date,'uuid':'hei'}
