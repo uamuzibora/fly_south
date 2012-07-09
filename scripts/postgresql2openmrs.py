@@ -2,6 +2,8 @@ import db
 
 import MySQLdb
 import sys
+import pprint
+pp = pprint.PrettyPrinter(indent=4)
 
 #Postgres Database
 host="localhost"
@@ -37,10 +39,31 @@ def new_person_attribute(person_id,attribute_type,value,date):
         database_my.cursor.execute("UPDATE person_attribute SET uuid = uuid() WHERE uuid='hei'")
         database_my.connection.commit()
 
+def new_encounter(person_id,enc_type_id,form_id,date):
+    new_enc = {'encounter_type':enc_type_id,'patient_id':person_id,'location_id':location,'form_id':form_id,'encounter_datetime':date,'creator':creator,'date_created':date,'uuid':'hei'}
+    new_enc_id = database_my.insert('encounter',new_enc)
+    database_my.cursor.execute("UPDATE encounter SET uuid = uuid() WHERE uuid='hei'")
+    return new_enc_id
 
-question_concept_ids=[]
-
-
+def obs_scribe(person_id,concept_id,encounter_id,obs_type,payload,date):
+    if obs_type == 'boolean':
+        new_ob = {'person_id':person_id,'concept_id':concept_id,'encounter_id':encounter_id,'obs_datetime':date,'location_id':location,'value_boolean':payload,'date_created':date,'creator':creator,'uuid':'hei'}
+    elif obs_type == 'coded':
+        new_ob = {'person_id':person_id,'concept_id':concept_id,'encounter_id':encounter_id,'obs_datetime':date,'location_id':location,'value_coded':payload,'date_created':date,'creator':creator,'uuid':'hei'}
+    elif obs_type == 'drug':
+        new_ob = {'person_id':person_id,'concept_id':concept_id,'encounter_id':encounter_id,'obs_datetime':date,'location_id':location,'value_drug':payload,'date_created':date,'creator':creator,'uuid':'hei'}
+    elif obs_type == 'datetime':
+        new_ob = {'person_id':person_id,'concept_id':concept_id,'encounter_id':encounter_id,'obs_datetime':date,'location_id':location,'value_datetime':payload,'date_created':date,'creator':creator,'uuid':'hei'}
+    elif obs_type == 'numeric':
+        new_ob = {'person_id':person_id,'concept_id':concept_id,'encounter_id':encounter_id,'obs_datetime':date,'location_id':location,'value_numeric':payload,'date_created':date,'creator':creator,'uuid':'hei'}
+    elif obs_type == 'text':
+        new_ob = {'person_id':person_id,'concept_id':concept_id,'encounter_id':encounter_id,'obs_datetime':date,'location_id':location,'value_text':payload,'date_created':date,'creator':creator,'uuid':'hei'}
+    else:
+        print "ERROR: Bad obs_type in obs_scribe function"
+        sys.exit(1)
+    new_ob_id = database_my.insert('obs',new_ob)
+    database_my.cursor.execute("UPDATE obs SET uuid = uuid() WHERE uuid='hei'")
+    return new_ob_id
 
 mariage_status = [1057,6244,6243,1060,1058,1059]
 
@@ -223,6 +246,76 @@ for patient in all_patients:
 
     # BOOM! Initial encounter done. Cue small victory dance.
 
+    # Now, Episode II: The Observations Strike Back
+
+    # Setup dictionary of tests
+    test_types = {  2:{'otype':'numeric','concept':5089}, # Weight
+                    3:{'otype':'numeric','concept':5090}, # Height
+                    4:{'otype':'numeric','concept':5088}, # Temp
+                    7:{'otype':'bool','concept':5272}, # Pregnancy 
+                    9:{'otype':'bool','concept':5271}, # FP status
+                    10:{'otype':'coded','concept':5965,'codes':{12:6100,13:6101,14:6102}}, # TB status
+                    14:{'otype':'coded','concept':6104,'codes':{28:821,29:512,30:3,31:6105,32:215,33:6106,34:6107,35:6108,36:6109}}, # ART SEs (multi)
+                    17:{'otype':'coded','concept':1193,'codes':{91:265,93:740,92:95,95:237,98:461,96:913,106:89,107:912,108:237,109:732,110:747,111:926,112:272,113:737,114:919,115:912,116:5839,118:294,97:5622}}, # Meds (multi)
+                    19:{'otype':'coded','concept':6118,'codes':{54:6114,55:6115,56:6116,57:6116}}, # ART adherence
+                    21:{'otype':'numeric','concept':5497}, # CD4
+                    22:{'otype':'numeric','concept':21}, # Hgb
+                    11:{'otype':'coded','concept':6110,'codes':{15:836,16:43,17:5136,18:5334,19:5244,20:5945,21:107,22:5960,23:6111,24:832,25:5995,26:902,27:864}}, # OIs (multi)
+                    6:{'otype':'coded','concept':5356,'codes':{4:1204,5:1205,6:1206,7:1207}}, # WHO stage
+                    15:{'otype':'coded','concept':6113,'codes':{37:6114,38:6115,39:6116,40:6116}} # Cotrimox adherence
+                    }
+    ## Various lookup dictionaries
+
+
+    # Build list of encounters
+    encounters = database_pg.query_dict('select test_performed from results where pid= %s', patient['pid'])
+    # Remove dupes
+    enc_list = []
+    for encounter in encounters:
+        enc_list.append(encounter['test_performed'])
+    enc_list = sorted(set(enc_list))
+    # Loop over encounters
+    for enc in enc_list:
+        # Create an encounter record in the db
+        new_enc_id = new_encounter(person_id,2,2,enc)
+        #pp.pprint(new_enc_id)
+        # Find individual sets of results for this encounter
+        results = database_pg.query_dict('select results.id as id, results.test_id as test_id, results.test_performed as obs_date, result_values.value_decimal as value_decimal, result_values.value_text as value_text, result_values.value_lookup as value_lookup from results inner join result_values on results.id = result_values.result_id where pid= %s and test_performed= %s', (patient['pid'], enc))
+        #print "*** NEW SET ***"
+        # Loop through result sets
+        for result in results:
+            #pp.pprint(result)
+            # Do we want this result? (look it up on our hit list)
+            if result['test_id'] in test_types:
+                # Yes, we want this value
+                #print result.['test_id']
+                # Lets find out what to do with it
+                if test_types[result['test_id']]['otype'] == 'numeric':
+                    obs_scribe(person_id,test_types[result['test_id']]['concept'],new_enc_id,'numeric',result['value_decimal'],enc)
+                if test_types[result['test_id']]['otype'] == 'bool':
+                    # Some horrible, horrible hardcoding
+                    if result['test_id'] == 7:
+                        # Dealing with Pregnancy
+                        if result['value_lookup'] == 8:
+                            bool_payload = 0
+                        elif result['value_lookup'] == 9:
+                            bool_payload = 1
+                        else:
+                            bool_payload = 0
+                    if result['test_id'] == 9:
+                        # Dealing with FP status
+                        if result['value_lookup'] == 10:
+                            bool_payload = 1
+                        elif result['value_lookup'] == 11:
+                            bool_payload = 0
+                        else:
+                            bool_payload = 0
+                    obs_scribe(person_id,test_types[result['test_id']]['concept'],new_enc_id,'boolean',bool_payload,enc)
+                if test_types[result['test_id']]['otype'] == 'coded':
+                    if result['value_lookup'] in test_types[result['test_id']]['codes']:
+                        code = test_types[result['test_id']]['codes'][result['value_lookup']]
+                        obs_scribe(person_id,test_types[result['test_id']]['concept'],new_enc_id,'coded',code,enc)
+    # Finale time: Episode III, The Return of the Drugs
 
 # Set MySQL foreign_key_checks on again
 database_my.cursor.execute("SET foreign_key_checks = 1;")
