@@ -1,4 +1,4 @@
-# fly-south -  a Python database migration script for CakePHP to OpenMRS
+# fly_south -  a Python database migration script for CakePHP to OpenMRS
 #
 # Copyright 2012 Gunnar Rø and Kenrick Turner
 #
